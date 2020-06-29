@@ -14,6 +14,7 @@
 
 import AppKit
 import UserNotifications
+import os
 
 protocol MenuBarUpdater {
   func updateAccounts(accounts: [Account])
@@ -177,6 +178,7 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
 
   func updateMessages(account_id: Int, fullCount: Int, messages: [Message]) {
     if messages.count > 0 {
+      os_log("updateMessages %d", messages.count)
       let message = messages.first!
       let firstTimestamp = message.timestamp!
       if firstTimestamp > message.account.latestTimestamp {
@@ -196,6 +198,8 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
           identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
       }
+    } else {
+      os_log("updateMessages zero.")
     }
     for item in menu.items {
       guard var account = item.representedObject as? Account else {
@@ -239,6 +243,7 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
   //MARK: Actions
 
   @objc func checkAll() {
+    os_log("checkAll")
     webController.getMail()
   }
 

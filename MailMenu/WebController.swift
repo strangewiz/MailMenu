@@ -16,6 +16,7 @@ import Cocoa
 import Foundation
 import SwiftyXMLParser
 import WebKit
+import os
 
 class ViewController: NSViewController {
   override func loadView() {
@@ -77,9 +78,9 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
     dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
 
     // No error handling, look for unauthorized especially!
-    // Iterate with some values kept from getAccounts().
-    var index: Int = 0
-    for var account in self.accounts {
+    // another way to do this would be
+    // self.accounts = self.accounts.map { account in
+    for (index, account) in self.accounts.enumerated() {
 
       /*
        ^sq_ig_i_personal (Inbox Primary),
@@ -88,22 +89,29 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
        ^sq_ig_i_notification (Inbox Updates),
        ^sq_ig_i_group (Inbox Forums)
        */
+      let url_string = "https://mail.google.com/mail/u/\(account.id!)/feed/atom/%5Esq_ig_i_personal"
+      os_log("fetching %@", url_string)
       WebCommand.fetch(
-        "https://mail.google.com/mail/u/\(account.id!)/feed/atom/%5Esq_ig_i_personal",
+        url_string,
         completionHandler: { (html: Any?, error: Error?) in
+          os_log("In completion handler")
           var messages = [Message]()
           var fullCount = 0
           let xml = try! XML.parse(html as! String)
-          
+          os_log("In completion handler %@", url_string)
           if xml["html"].element != nil {
             // fire an error here, most likely unuathorized.
+            os_log("auth error %@", url_string)
             return;
           }
           let count = xml["feed"]["fullcount"].int
           if count != nil {
-            //            print("Got a count of : \(count!)")   // error will not be nil
             fullCount = count!
+            os_log("Got a count of %d", fullCount)
+          } else {
+            os_log("Got a nil count")
           }
+
           for entry in xml["feed", "entry"] {
             var message = Message()
             message.title = String(entry["title"].text ?? "")
@@ -124,9 +132,9 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
           }
           self.delegate.updateMessages(
             account_id: account.id, fullCount: fullCount, messages: messages)
-          account.latestTimestamp = messages.first!.timestamp!
-          self.accounts[index] = account
-          index += 1
+          
+          // blech.
+          self.accounts[index].latestTimestamp = messages.first!.timestamp!
         })
     }
   }
