@@ -57,6 +57,8 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
         frame: window.contentViewController!.view.bounds, configuration: WKWebViewConfiguration())
       webView.navigationDelegate = self
       webView.translatesAutoresizingMaskIntoConstraints = false
+      webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15"
+      webView.autoresizingMask = [.width, .height];
       window.contentViewController!.view.addSubview(webView)
     }
     window.makeKeyAndOrderFront(self)
@@ -102,6 +104,7 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
           if xml["html"].element != nil {
             // fire an error here, most likely unuathorized.
             os_log("auth error %@", url_string)
+            self.showMail()
             return;
           }
           let count = xml["feed"]["fullcount"].int
@@ -133,8 +136,11 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
           self.delegate.updateMessages(
             account_id: account.id, fullCount: fullCount, messages: messages)
           
+          // TODO: This crashed, maybe accounts[index] is wrong? or no messages?
           // blech.
-          self.accounts[index].latestTimestamp = messages.first!.timestamp!
+          if messages.isEmpty == false {
+            self.accounts[index].latestTimestamp = messages.first!.timestamp!
+          }
         })
     }
   }
