@@ -36,17 +36,18 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
   var count = 0
   let emptyItem = NSMenuItem(title: "No Accounts Found", action: nil, keyEquivalent: "")
 
-  lazy var chromeAccounts: [Int: String] = {
-    var dict: [Int: String] = [:]
+  lazy var chromeAccounts: [String: String] = {
+    var dict: [String: String] = [:]
     let fileManager = FileManager.default
     let appSupport = fileManager.urls(
       for: .applicationSupportDirectory,
       in: .userDomainMask
     ).first
     let directoryURL = appSupport?.appendingPathComponent("Google").appendingPathComponent("Chrome")
-    let profilesToTry = [1, 2, 3, 4, 5]
-    for index in profilesToTry {
-      var path = directoryURL?.appendingPathComponent("Profile " + String(index))
+    let profilesToTry = ["Default", "Profile 1", "Profile 2", "Profile 3", "Profile 4", "Profile 5"]
+    for dir_name in profilesToTry {
+      //var path = directoryURL?.appendingPathComponent("Profile " + String(index))
+      var path = directoryURL?.appendingPathComponent(dir_name)
       if !fileManager.fileExists(atPath: path!.path) {
         continue
       }
@@ -57,7 +58,7 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
         if let array = dictionary["account_info"] as? [Any] {
           if let firstObject = array.first as? [String: Any] {
             let email: String = firstObject["email"] as! String
-            dict[index] = email
+            dict[dir_name] = email
           }
         }
       }
@@ -270,9 +271,9 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
     let urlString: String = "https://mail.google.com/mail/u/\(name)/#inbox/" + link.valueOf("message_id")!
     
     // The following will only work if app sandbox is set to NO
-    for (index, email) in chromeAccounts {
+    for (dir_name, email) in chromeAccounts {
       if email == name {
-        profile = "--profile-directory=Profile " + String(index)
+        profile = "--profile-directory=" + dir_name
         chromeAccountFound = true
         break
       }
