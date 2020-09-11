@@ -19,6 +19,7 @@ import os
 protocol MenuBarUpdater {
   func updateAccounts(accounts: [Account])
   func updateMessages(account_id: Int, fullCount: Int, messages: [Message])
+  func setupShowMail(account: Account, submenu: NSMenu)
 }
 
 extension URL {
@@ -30,6 +31,7 @@ extension URL {
 
 class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDelegate {
   var menu: NSMenu!
+  var showWebViewMailSubmenu: NSMenu!
   var statusBarItem: NSStatusItem!
   let webController = WebController()
   var timer: Timer!
@@ -90,7 +92,10 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
       title: "Show Mail", action: #selector(self.showWebViewMail), keyEquivalent: "")
     showWebViewMailItem.target = self
     menu.addItem(showWebViewMailItem)
+    showWebViewMailSubmenu = NSMenu()
+    menu.setSubmenu(showWebViewMailSubmenu, for: showWebViewMailItem)
 
+      
     let quitItem = NSMenuItem(title: "Quit", action: #selector(self.quit), keyEquivalent: "")
     quitItem.target = self
     menu.addItem(quitItem)
@@ -173,8 +178,17 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
       accountItem.representedObject = account
       menu.insertItem(accountItem, at: menu.index(of: emptyItem))
       menu.setSubmenu(submenu, for: accountItem)
+      setupShowMail(account: account, submenu: showWebViewMailSubmenu)
     }
     checkAll()
+  }
+  
+  func setupShowMail(account: Account, submenu: NSMenu) {
+    let showWebViewMailItem = NSMenuItem(
+      title: "Load Mail for \(account.name!)", action: #selector(self.showWebViewMail), keyEquivalent: "")
+    showWebViewMailItem.target = self
+    showWebViewMailItem.representedObject = account
+    submenu.addItem(showWebViewMailItem)
   }
 
   func updateMessages(account_id: Int, fullCount: Int, messages: [Message]) {
@@ -252,8 +266,12 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
     webController.showAccounts()
   }
 
-  @objc func showWebViewMail() {
-    webController.showMail()
+  @objc func showWebViewMail(_ sender: NSMenuItem) {
+    guard let account = sender.representedObject as? Account else {
+      return
+    }
+
+    webController.showMail(id: account.id)
   }
 
   @objc func openMessageItem(_ sender: NSMenuItem) {

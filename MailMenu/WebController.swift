@@ -69,9 +69,10 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
     webView.load(URLRequest(url: URL(string: "https://accounts.google.com/signoutoptions?hl=en")!))
   }
 
-  func showMail() {
+  func showMail(id: Int) {
     showWindow()
-    webView.load(URLRequest(url: URL(string: "https://mail.google.com")!))
+    let url_string = "https://mail.google.com/mail/u/\(id)"
+    webView.load(URLRequest(url: URL(string: url_string)!))
   }
 
   func getMail() {
@@ -104,7 +105,7 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
           if xml["html"].element != nil {
             // fire an error here, most likely unuathorized.
             os_log("auth error %@", url_string)
-            self.showMail()
+            self.showMail(id: account.id)
             return;
           }
           let count = xml["feed"]["fullcount"].int
