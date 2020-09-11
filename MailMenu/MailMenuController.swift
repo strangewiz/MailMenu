@@ -95,7 +95,6 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
     showWebViewMailSubmenu = NSMenu()
     menu.setSubmenu(showWebViewMailSubmenu, for: showWebViewMailItem)
 
-      
     let quitItem = NSMenuItem(title: "Quit", action: #selector(self.quit), keyEquivalent: "")
     quitItem.target = self
     menu.addItem(quitItem)
