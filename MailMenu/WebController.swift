@@ -106,17 +106,15 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
           cookieStore.deleteCookie(cookie)
       }
 
-      let config = URLSessionConfiguration.default
-      let session = URLSession(configuration: config)
-      session.configuration.httpCookieStorage =
-          HTTPCookieStorage.sharedCookieStorage(forGroupContainerIdentifier: account.name)
-
       let url = URL(string: "https://mail.google.com/mail/u/0/feed/atom/%5Esq_ig_i_personal")!
-      let cookies = HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": account.cookies], for: url)
-      session.configuration.httpCookieStorage!.setCookies(cookies, for: url, mainDocumentURL: url)
+//      let jar = HTTPCookieStorage.shared
+//      let cookies = HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": account.cookies], for: url)
+//      jar.setCookies(cookies, for: url, mainDocumentURL: url)
+      let url_request =  NSMutableURLRequest(url: url)
+      url_request.addValue(account.cookies, forHTTPHeaderField: "cookie")
 
       // Then
-      let task = session.dataTask(with: url) {(data, response, error) in
+      let task = URLSession.shared.dataTask(with: url_request as URLRequest) {(data, response, error) in
           guard let data = data else { return }
           let html = String(data: data, encoding: .utf8)!
           os_log("In completion handler")
@@ -169,7 +167,6 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
       }
       os_log("fetching %@", url.absoluteString)
       task.resume()
-      sleep(5)
     }
   }
   
@@ -219,13 +216,13 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
       let name = row[0] as! String
       let encrypted_blob:Blob = row[1] as! Blob
       let unencrypted:String = decrypt(key: keyData, salt: salt, encryptedBytes: encrypted_blob.bytes)
-      set_cookies += "\(name)=\(unencrypted), "
+      set_cookies += "\(name)=\(unencrypted); "
     }
     for row in try! db.prepare("select name, encrypted_value from cookies where host_key like '.google.com'") {
       let name = row[0] as! String
       let encrypted_blob:Blob = row[1] as! Blob
       let unencrypted:String = decrypt(key: keyData, salt: salt, encryptedBytes: encrypted_blob.bytes)
-      set_cookies += "\(name)=\(unencrypted), "
+      set_cookies += "\(name)=\(unencrypted); "
     }
     
     if (!set_cookies.contains("SIDCC") || !set_cookies.contains("COMPASS")) {
