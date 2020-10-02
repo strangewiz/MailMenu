@@ -17,6 +17,7 @@ import Foundation
 struct Account {
   var id: Int!
   var name: String!
+  var cookies: String!
   var fullCount = 0
   var latestTimestamp: Date = .distantPast
 

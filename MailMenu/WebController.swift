@@ -17,6 +17,16 @@ import Foundation
 import SwiftyXMLParser
 import WebKit
 import os
+import CryptoSwift
+import SQLite
+
+
+extension String {
+    func trim() -> String {
+          return self.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+}
+
 
 class ViewController: NSViewController {
   override func loadView() {
@@ -39,8 +49,6 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
     // Configure some buttons to load the accounts chooser, and gmail for each
     // account found.  Need to load gmail once otherwise we will get an
     // unauthorized error.
-
-    getAccounts()
   }
 
   func showWindow() {
@@ -65,14 +73,14 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
   }
 
   func showAccounts() {
-    showWindow()
-    webView.load(URLRequest(url: URL(string: "https://accounts.google.com/signoutoptions?hl=en")!))
+//    showWindow()
+//    webView.load(URLRequest(url: URL(string: "https://accounts.google.com/signoutoptions?hl=en")!))
   }
 
   func showMail(id: Int) {
-    showWindow()
-    let url_string = "https://mail.google.com/mail/u/\(id)"
-    webView.load(URLRequest(url: URL(string: url_string)!))
+//    showWindow()
+//    let url_string = "https://mail.google.com/mail/u/\(id)"
+//    webView.load(URLRequest(url: URL(string: url_string)!))
   }
 
   func getMail() {
@@ -92,19 +100,33 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
        ^sq_ig_i_notification (Inbox Updates),
        ^sq_ig_i_group (Inbox Forums)
        */
-      let url_string = "https://mail.google.com/mail/u/\(account.id!)/feed/atom/%5Esq_ig_i_personal"
-      os_log("fetching %@", url_string)
-      WebCommand.fetch(
-        url_string,
-        completionHandler: { (html: Any?, error: Error?) in
+      
+      let cookieStore = HTTPCookieStorage.shared
+      for cookie in cookieStore.cookies ?? [] {
+          cookieStore.deleteCookie(cookie)
+      }
+
+      let config = URLSessionConfiguration.default
+      let session = URLSession(configuration: config)
+      session.configuration.httpCookieStorage =
+          HTTPCookieStorage.sharedCookieStorage(forGroupContainerIdentifier: account.name)
+
+      let url = URL(string: "https://mail.google.com/mail/u/0/feed/atom/%5Esq_ig_i_personal")!
+      let cookies = HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": account.cookies], for: url)
+      session.configuration.httpCookieStorage!.setCookies(cookies, for: url, mainDocumentURL: url)
+
+      // Then
+      let task = session.dataTask(with: url) {(data, response, error) in
+          guard let data = data else { return }
+          let html = String(data: data, encoding: .utf8)!
           os_log("In completion handler")
           var messages = [Message]()
           var fullCount = 0
           let xml = try! XML.parse(html as! String)
-          os_log("In completion handler %@", url_string)
+        os_log("In completion handler %@", url.absoluteString)
           if xml["html"].element != nil {
             // fire an error here, most likely unuathorized.
-            os_log("auth error %@", url_string)
+            os_log("auth error %@", url.absoluteString)
             self.showMail(id: account.id)
             return;
           }
@@ -134,46 +156,121 @@ class WebController: NSObject, NSWindowDelegate, WKNavigationDelegate {
             //              print("Got a title of of : \(message.title!)")
             messages.append(message)
           }
+        DispatchQueue.main.async {
           self.delegate.updateMessages(
-            account_id: account.id, fullCount: fullCount, messages: messages)
-          
+            account_name: account.name, fullCount: fullCount, messages: messages)
+        }
+
           // TODO: This crashed, maybe accounts[index] is wrong? or no messages?
           // blech.
           if messages.isEmpty == false {
             self.accounts[index].latestTimestamp = messages.first!.timestamp!
           }
-        })
+      }
+      os_log("fetching %@", url.absoluteString)
+      task.resume()
+      sleep(5)
+    }
+  }
+  
+  func decrypt(key:Array<UInt8>, salt:Array<UInt8>, encryptedBytes:Array<UInt8>) -> String {
+    // The encrypted data start with the ASCII encoding of v10 (i.e. 0x763130),
+    // followed by the 12 bytes nonce, the actual ciphertext and finally the 16
+    // bytes authentication tag. The individual components can be separated as
+    // follows:
+    //    nonce = data[3:3+12]
+    //    ciphertext = data[3+12:-16]
+    //    tag = data[-16:]
+    let begin = 3
+    let ciphertext = encryptedBytes[begin...]
+    let iv = Array("                ".utf8)
+    let decrypted = try! AES(key: key, blockMode: CBC(iv: iv), padding: .pkcs5).decrypt(ciphertext)
+    if let string = String(bytes: decrypted, encoding: .utf8) {
+      return string
+    } else {
+      return "not a valid UTF-8 sequence"
     }
   }
 
+  func shell(_ command: String) -> String {
+    let task = Process()
+    let pipe = Pipe()
+
+    task.standardOutput = pipe
+    task.arguments = ["-c", command]
+    task.launchPath = "/bin/bash"
+    task.launch()
+
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let output = String(data: data, encoding: .utf8)!
+    return output.trim()
+  }
+  
+  func getCookies(path:String) -> String {
+    let key = shell("security find-generic-password -a 'Chrome' -w")
+    let password: Array<UInt8> = Array(key.utf8)
+    let salt: Array<UInt8> = Array("saltysalt".utf8)
+
+    let keyData = try! PKCS5.PBKDF2(password: password, salt: salt, iterations: 1003, keyLength: 16, variant: .sha1).calculate()
+
+    var set_cookies:String = ""
+    let db = try! Connection(path)
+    for row in try! db.prepare("select name, encrypted_value from cookies where host_key like 'mail.google.com'") {
+      let name = row[0] as! String
+      let encrypted_blob:Blob = row[1] as! Blob
+      let unencrypted:String = decrypt(key: keyData, salt: salt, encryptedBytes: encrypted_blob.bytes)
+      set_cookies += "\(name)=\(unencrypted), "
+    }
+    for row in try! db.prepare("select name, encrypted_value from cookies where host_key like '.google.com'") {
+      let name = row[0] as! String
+      let encrypted_blob:Blob = row[1] as! Blob
+      let unencrypted:String = decrypt(key: keyData, salt: salt, encryptedBytes: encrypted_blob.bytes)
+      set_cookies += "\(name)=\(unencrypted), "
+    }
+    
+    if (!set_cookies.contains("SIDCC") || !set_cookies.contains("COMPASS")) {
+      return String();
+    }
+    return set_cookies
+  }
+
   func getAccounts() {
-    let handleAccounts = { (html: Any?, error: Error?) in
-      // print(html!)
-      let pattern = "choose-account-(.)\" .* value=\"(.*)\">"
-      let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-      let htmlString = html as! String
-      let range = NSRange(location: 0, length: htmlString.utf16.count)
-      regex?.enumerateMatches(in: htmlString, options: [], range: range) { (match, _, stop) in
-        guard let match = match else { return }
-        if match.numberOfRanges == 3 {
-          let firstCaptureRange = Range(match.range(at: 1), in: htmlString)
-          let secondCaptureRange = Range(match.range(at: 2), in: htmlString)
-          //          print(htmlString[firstCaptureRange!])
-          //          print(htmlString[secondCaptureRange!])
-          var account = Account()
-          account.id = Int(htmlString[firstCaptureRange!])
-          account.name = String(htmlString[secondCaptureRange!])
-          self.accounts.append(account)
-        } else {
-          print("Error getAccounts.")
+    accounts.removeAll()
+
+    var dict: [String: String] = [:]
+    let fileManager = FileManager.default
+    let appSupport = fileManager.urls(
+      for: .applicationSupportDirectory,
+      in: .userDomainMask
+    ).first
+    let directoryURL = appSupport?.appendingPathComponent("Google").appendingPathComponent("Chrome")
+    let profilesToTry = ["Default", "Profile 1", "Profile 2", "Profile 3", "Profile 4", "Profile 5"]
+    for dir_name in profilesToTry {
+      var path = directoryURL?.appendingPathComponent(dir_name)
+      if !fileManager.fileExists(atPath: path!.path) {
+        continue
+      }
+      var preference_path = path?.appendingPathComponent("Preferences")
+      let data = try? Data(contentsOf: preference_path!, options: .mappedIfSafe)
+      let json = try? JSONSerialization.jsonObject(with: data!, options: [])
+      if let dictionary = json as? [String: Any] {
+        if let array = dictionary["account_info"] as? [Any] {
+          if let firstObject = array.first as? [String: Any] {
+            let email: String = firstObject["email"] as! String
+            var cookies_path = path?.appendingPathComponent("Cookies")
+            let cookies:String = getCookies(path: cookies_path!.path)
+            if (cookies != nil) {
+              var account = Account()
+              account.name = email
+              account.cookies = cookies
+              self.accounts.append(account)
+//              break
+            }
+          }
         }
       }
-      self.delegate.updateAccounts(accounts: self.accounts)
     }
-    accounts.removeAll()
-    WebCommand.fetch(
-      "https://accounts.google.com/signoutoptions?hl=en",
-      completionHandler: handleAccounts)
+    self.delegate.updateAccounts(accounts: self.accounts)
   }
 
   // MARK: NSWindowDelegate

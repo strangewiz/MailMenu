@@ -18,7 +18,7 @@ import os
 
 protocol MenuBarUpdater {
   func updateAccounts(accounts: [Account])
-  func updateMessages(account_id: Int, fullCount: Int, messages: [Message])
+  func updateMessages(account_name: String, fullCount: Int, messages: [Message])
   func setupShowMail(account: Account, submenu: NSMenu)
 }
 
@@ -105,6 +105,7 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
     updateCount()
 
     webController.delegate = self
+    webController.getAccounts()
 
     NSWorkspace.shared.notificationCenter.addObserver(
       self, selector: #selector(onWakeNote(note:)),
@@ -190,7 +191,7 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
     submenu.addItem(showWebViewMailItem)
   }
 
-  func updateMessages(account_id: Int, fullCount: Int, messages: [Message]) {
+  func updateMessages(account_name: String, fullCount: Int, messages: [Message]) {
     if messages.count > 0 {
       os_log("updateMessages %d", messages.count)
       let message = messages.first!
@@ -219,7 +220,7 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
       guard var account = item.representedObject as? Account else {
         continue
       }
-      if account.id == account_id {
+      if account.name == account_name {
         item.submenu!.removeAllItems()
         item.title = account.name + " (\(fullCount))"
         account.fullCount = fullCount
@@ -262,15 +263,15 @@ class MailMenuController: NSObject, MenuBarUpdater, UNUserNotificationCenterDele
   }
 
   @objc func showWebViewAccounts() {
-    webController.showAccounts()
+//    webController.showAccounts()
   }
 
   @objc func showWebViewMail(_ sender: NSMenuItem) {
-    guard let account = sender.representedObject as? Account else {
-      return
-    }
-
-    webController.showMail(id: account.id)
+//    guard let account = sender.representedObject as? Account else {
+//      return
+//    }
+//
+//    webController.showMail(id: account.id)
   }
 
   @objc func openMessageItem(_ sender: NSMenuItem) {

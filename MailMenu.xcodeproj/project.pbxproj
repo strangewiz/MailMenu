@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		932175192526CF6E00AF93A7 /* CryptoSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 932175182526CF6E00AF93A7 /* CryptoSwift */; };
+		9321751F2526CF7B00AF93A7 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 9321751E2526CF7B00AF93A7 /* SQLite */; };
 		93E8D0E024A55210002F5CA6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 93E8D0DF24A55210002F5CA6 /* Assets.xcassets */; };
 		93E8D0E324A55210002F5CA6 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 93E8D0E224A55210002F5CA6 /* Preview Assets.xcassets */; };
 		93E8D0EF24A55210002F5CA6 /* MailMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93E8D0EE24A55210002F5CA6 /* MailMenuTests.swift */; };
@@ -64,7 +66,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9321751F2526CF7B00AF93A7 /* SQLite in Frameworks */,
 				93E8D11924A553D7002F5CA6 /* SwiftyXMLParser in Frameworks */,
+				932175192526CF6E00AF93A7 /* CryptoSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,6 +171,8 @@
 			name = MailMenu;
 			packageProductDependencies = (
 				93E8D11824A553D7002F5CA6 /* SwiftyXMLParser */,
+				932175182526CF6E00AF93A7 /* CryptoSwift */,
+				9321751E2526CF7B00AF93A7 /* SQLite */,
 			);
 			productName = MailMenu;
 			productReference = 93E8D0D824A5520E002F5CA6 /* MailMenu.app */;
@@ -241,6 +247,8 @@
 			mainGroup = 93E8D0CF24A5520E002F5CA6;
 			packageReferences = (
 				93E8D11724A553D7002F5CA6 /* XCRemoteSwiftPackageReference "SwiftyXMLParser" */,
+				932175172526CF6E00AF93A7 /* XCRemoteSwiftPackageReference "CryptoSwift" */,
+				9321751D2526CF7B00AF93A7 /* XCRemoteSwiftPackageReference "SQLite" */,
 			);
 			productRefGroup = 93E8D0D924A5520E002F5CA6 /* Products */;
 			projectDirPath = "";
@@ -615,6 +623,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		932175172526CF6E00AF93A7 /* XCRemoteSwiftPackageReference "CryptoSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzyzanowskim/CryptoSwift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.2;
+			};
+		};
+		9321751D2526CF7B00AF93A7 /* XCRemoteSwiftPackageReference "SQLite" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.2;
+			};
+		};
 		93E8D11724A553D7002F5CA6 /* XCRemoteSwiftPackageReference "SwiftyXMLParser" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/yahoojapan/SwiftyXMLParser.git";
@@ -626,6 +650,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		932175182526CF6E00AF93A7 /* CryptoSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 932175172526CF6E00AF93A7 /* XCRemoteSwiftPackageReference "CryptoSwift" */;
+			productName = CryptoSwift;
+		};
+		9321751E2526CF7B00AF93A7 /* SQLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9321751D2526CF7B00AF93A7 /* XCRemoteSwiftPackageReference "SQLite" */;
+			productName = SQLite;
+		};
 		93E8D11824A553D7002F5CA6 /* SwiftyXMLParser */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 93E8D11724A553D7002F5CA6 /* XCRemoteSwiftPackageReference "SwiftyXMLParser" */;
